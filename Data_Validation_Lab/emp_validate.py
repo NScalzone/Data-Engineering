@@ -83,6 +83,19 @@ for i in data['reports_to']:
         boss_not_listed += 1
 
 
+address_map = {}
+for i in data['address']:
+    if i not in address_map:
+        address_map[i] = 1
+    else:
+        address_map[i] += 1
+
+shared_addresses = 0
+for i in address_map:
+    if address_map[i] > 1:
+        shared_addresses += 1
+
+
 cities_vs_employees = {}
 for i in data['city']:
     if i not in cities_vs_employees:
@@ -161,6 +174,7 @@ print(f"There were {salary_violations} salary violations")
 print(f"There were {birth_vs_hire_violations} instances in which someone was hired before they were born")
 print(f"{be_your_own_boss} employees report/s to themself, rather than someone else")
 print(f"{boss_not_listed} employees report to someone with no listed employee identification number")
+print(f"There are {shared_addresses} addresses with at least 2 employees living at them.")
 print(f"There are {cities_with_less_than_two} cities with less than two employees")
 print(f"There are {popular_job_titles} job titles held by more than one employee")
 print(f"The largest team has {largest_team} employees, the smallest has {smallest_team}, the average team has {average_team_size}, and the median has {median_team_size}")
