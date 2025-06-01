@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import io
 from date_time import filter_act_time
+from scipy.stats import binomtest, chisquare, chi2_contingency
 pd.options.mode.chained_assignment = None  # default='warn'
 
 stop_events_html = 'trimet_stopevents_2022-12-07.html'
@@ -115,33 +116,92 @@ def chisquare_calc(on, off):
 
 # print(vehicle_nums)
 percentage = 21.15
+p0 = percentage/100
 sub_5_alpha_vehicles = {}
 all_ons = 0
 all_offs = 0
+
+
 # chi_square = 0
-for i in vehicle_nums:
-    chi_square = 0
-    vehicle_data = stops_df[stops_df['vehicle_number']== i]
-    num_of_stop_events = vehicle_data.shape[0]
-    total_ons = sum(vehicle_data['ons'])
-    total_offs = sum(vehicle_data["offs"])
-    chi_square = chisquare_calc(total_ons, total_offs)
-    ons_df = vehicle_data[["ons"]]
-    at_least_one_boarding = ons_df[ons_df >= 1.0].count()
+# for i in vehicle_nums:
+#     chi_square = 0
+#     vehicle_data = stops_df[stops_df['vehicle_number']== i]
+#     num_of_stop_events = vehicle_data.shape[0]
+#     total_ons = sum(vehicle_data['ons'])
+#     total_offs = sum(vehicle_data["offs"])
+#     on_off_diff = vehicle_data["offs"]/vehicle_data["ons"]
+#     print(vehicle_data)
+    # chi_square = chisquare_calc(total_ons, total_offs)
+    # chi_square = chisquare(on_off_diff, f_exp=0)
+    # ons_df = vehicle_data[["ons"]]
+    # at_least_one_boarding = int(ons_df[ons_df >= 1.0].count())
+    # print("at least one boarding",at_least_one_boarding)
     # percentage_stops_with_boarding = 100 * (float(at_least_one_boarding)/float(num_of_stop_events))
+    # n = num_of_stop_events
+    # k = at_least_one_boarding
+    # print(f"num stop events {n}, number of stops with boarding {k}")
+    # result = binomtest(k, n, 0.2115, alternative='two-sided')
+    # p = result.pvalue
+
     # percent_diff =  100.0 * (percentage_stops_with_boarding/percentage)
     # alpha = abs(100.0 - percent_diff)
-    # if alpha < 5:
-    #     sub_5_alpha_vehicles[i] = [percentage_stops_with_boarding, alpha]
-    if chi_square <= 0.05:
-        print(f"Vehicle number: {i}\t ons: {total_ons}\toffs: {total_offs}\tX^2: {chi_square}")
-    all_ons += total_ons
-    all_offs += total_offs
-   
+    # if p < 0.05:
+    #     sub_5_alpha_vehicles[i] = [percentage_stops_with_boarding, p]
+    # if chi_square.pvalue <= 0.05:
+    # #     print(f"Vehicle number: {i}\t ons: {total_ons}\toffs: {total_offs}\tX^2: {chi_square.pvalue}")
+    # all_ons += total_ons
+    # all_offs += total_offs
     
-print(f"Total ons: {all_ons}\tTotal offs: {all_offs}")
+
+    
+# print(f"Total ons: {all_ons}\tTotal offs: {all_offs}")
 # print(f"X^2 for all ons/offs is: {chi_square}")
 # print(f"There are: {len(sub_5_alpha_vehicles)} vehicles with alpha less than 5")
 # for i in sub_5_alpha_vehicles:
 #     print(i,", ", sub_5_alpha_vehicles[i])
+
+
+
+# for chi square
+
+system_ons = stops_df['ons'].sum()
+system_offs = stops_df['offs'].sum()
+
+bus_totals = stops_df.groupby('vehicle_number')[['ons', 'offs']].sum()
+
+results = []
+
+for vehicle_number, row in bus_totals.iterrows():
+    a = row['ons']
+    b = row['offs']
     
+    if a + b == 0:
+        continue
+
+    c = system_ons - a
+    d = system_offs - b
+
+
+    if c + d == 0:
+        continue
+
+    contingency_table = [[a, b],
+                         [c, d]]
+
+    chi2, p, dof, expected = chi2_contingency(contingency_table)
+
+    results.append({
+        'vehicle_number': vehicle_number,
+        'ons': a,
+        'offs': b,
+        'p_value': p
+    })
+
+# Convert to DataFrame
+results_df = pd.DataFrame(results)
+
+# Filter for significant differences (p < 0.05)
+biased_buses = results_df[results_df['p_value'] < 0.05]
+
+# Show results
+print(biased_buses[['vehicle_number', 'p_value']].sort_values('p_value'))

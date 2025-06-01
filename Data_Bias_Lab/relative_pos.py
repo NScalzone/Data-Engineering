@@ -1,6 +1,7 @@
 import pandas as pd
 import scipy
 import scipy.stats
+from scipy.stats import ttest_1samp
 import numpy as np
 
 datapath = 'trimet_relpos_2022-12-07.csv'
@@ -33,6 +34,7 @@ def t_test(x1, x2, n1, n2, s):
     return((x1 - x2)/(s/np.sqrt(n2)))
 
 t_values = {}
+p_values = {}
 for i in vehicles:
     vehicle_data = relpos_df[relpos_df['VEHICLE_NUMBER']== i]
     temp_relpos = []
@@ -42,10 +44,13 @@ for i in vehicles:
     n2 = vehicle_data.shape[0]
     s2 = scipy.stats.tstd(temp_relpos)
     x2 = np.mean(temp_relpos)
-    t = t_test(mean_all, x2, total_size, n2, s2)
-    t_values[i] = t
     
-print("\nVehicle Number\t| t_value\n-------------------------------------------")
+    # t = t_test(mean_all, x2, total_size, n2, s2)
+    t, p = ttest_1samp(temp_relpos, mean_all)
+    t_values[i] = t
+    p_values[i] = p
+    
+print("\nVehicle Number\t| t_value\t\t| p_value\n---------------------------------------------------")
 for i in t_values:
-    if t_values[i] < 0.005:
-        print(i,"\t\t| ", t_values[i])
+    if p_values[i] < 0.01:
+        print(i,"\t\t| ", t_values[i],"\t|", p_values[i])
