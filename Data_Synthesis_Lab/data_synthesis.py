@@ -3,6 +3,7 @@ import pandas as pd
 import random
 import datetime
 from dateutil.relativedelta import relativedelta
+from tqdm import tqdm
 
 roles_and_salaries_df = pd.read_csv('Departments Roles and Salaries - RolesAndSalaries.csv')
 
@@ -44,26 +45,26 @@ locality_percentage = {
     "South Korea":(0.4 * 0.009)
     }
 
-# locality_totals = {
-#     "USA":6000,
-#     "India":2980, 
-#     "China":472, 
-#     "Mexico":24, 
-#     "Canada":40, 
-#     "Philippines":24, 
-#     "Taiwan":24, 
-#     "South Korea":36
-#     }
 locality_totals = {
-    "USA":1,
-    "India":1, 
-    "China":1, 
-    "Mexico":1, 
-    "Canada":1, 
-    "Philippines":1, 
-    "Taiwan":1, 
-    "South Korea":1
+    "USA":6000,
+    "India":2980, 
+    "China":472, 
+    "Mexico":24, 
+    "Canada":40, 
+    "Philippines":24, 
+    "Taiwan":24, 
+    "South Korea":36
     }
+# locality_totals = {
+#     "USA":1,
+#     "India":1, 
+#     "China":1, 
+#     "Mexico":1, 
+#     "Canada":1, 
+#     "Philippines":1, 
+#     "Taiwan":1, 
+#     "South Korea":1
+#     }
 
 
 departments = {
@@ -86,6 +87,7 @@ def get_id_number(emp_df):
     while employeeID in emp_df["employeeID"]:
         employeeID = random.randint(100000000,999999999)
     return employeeID
+
 
 def get_random_department(departments):
     """
@@ -148,7 +150,7 @@ for i in locality:
     # i is the locality , i.e. "USA"
     fake = Faker(locality[i])
     
-    for j in range(locality_totals[i]):
+    for j in tqdm(range(locality_totals[i])):
         
         # j is a number based on the total amount for each locality
         employeeID = get_id_number(emp_df)
@@ -187,4 +189,9 @@ for i in locality:
         emp_df = emp_df.sort_index()
         
 
-print(emp_df.head())
+emp_df = emp_df.sample(frac=1)
+
+print(emp_df.describe(include='all'))
+print(emp_df.head(10))
+print(sum(emp_df["salary"]))
+emp_df.to_csv("emp_df.csv")
