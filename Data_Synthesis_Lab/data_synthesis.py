@@ -97,6 +97,14 @@ def get_random_department(departments):
     weights = list(departments.values())
     return random.choices(department_names, weights=weights, k=1)[0]
 
+def get_random_locality(localitities):
+    """
+    Returns the locality based on the percentages
+    """
+    locality_names = list(localitities.keys())
+    weights = list(localitities.values())
+    return random.choices(locality_names, weights=weights, k=1)[0]
+ 
 
 def get_random_role(df, department):
     """
@@ -143,55 +151,98 @@ def get_random_salary(df, role):
 
     return int(random.uniform(lower, upper))
 
+def get_unique_name(country, gender, emp_df, locality_map, max_attempts=1000):
+    fake = Faker(locality_map[country])
+    existing_names = set(emp_df["name"])
+
+    for _ in range(max_attempts):
+        if gender == 'male':
+            firstname = fake.first_name_male()
+        elif gender == 'female':
+            firstname = fake.first_name_female()
+        else:
+            firstname = fake.first_name_nonbinary()
+
+        lastname = fake.last_name()
+        name = f"{firstname} {lastname}"
+
+        if name not in existing_names:
+            return firstname, lastname
+
+    raise ValueError("Failed to generate a unique name after max attempts.")
+
+def get_unique_email(firstname, lastname, emp_df, locality_map):
+    # print(emp_df.head(10))
+    fake = Faker(locality_map[country])
+    domain = fake.free_email_domain()
+    email = f"{firstname}.{lastname}@{domain}"
+    tries = 0
+    while email in emp_df["email"]:
+        if tries == 0:
+            email = f"{lastname}.{firstname}@{domain}"
+            tries += 1
+        if tries == 1:
+            email = f"{firstname}{lastname}@{domain}"
+            tries += 1
+        if tries == 2:
+            email = f"{lastname}{firstname}@{domain}"
+            tries += 1
+        else:
+            domain = fake.free_email_domain()
+            email = f"{firstname}.{lastname}@{domain}"
+            tries = 0
+        
+    return email
+
 us_fake = Faker('en_US')
 
-for i in locality:
-    
+for i in tqdm(range(10000)):
+    country= get_random_locality(locality_percentage)
     # i is the locality , i.e. "USA"
-    fake = Faker(locality[i])
+    fake = Faker(locality[country])
     
-    for j in tqdm(range(locality_totals[i])):
+    # for j in tqdm(range(locality_totals[country])):
         
-        # j is a number based on the total amount for each locality
-        employeeID = get_id_number(emp_df)
-        countryOfBirth = i
-        gender_dice = random.randint(1,100)
-        
-        if gender_dice <= 49:
-            name = fake.name_male()
-            gender = 'male'
-        elif gender_dice <= 98:
-            name = fake.name_female()
-            gender = 'female'
-        else:
-            name = fake.name_nonbinary()
-            gender = 'nonbinary'
-            
-        email = fake.email()
-        ssn = us_fake.ssn()
-        phone = us_fake.phone_number()
-        birthdate = us_fake.date_between(start_date='-60y', end_date='-20y')
-        at_least_twenty = birthdate + relativedelta(years=20)
-        founding_date = datetime.date(2010, 1, 1)
-        
-        # if the employee was eligible for hire at the time of founding
-        if at_least_twenty < founding_date:
-            hiredate = us_fake.date_between(start_date=founding_date)
-        else:
-            hiredate = us_fake.date_between(start_date=at_least_twenty)
+    # j is a number based on the total amount for each locality
+    employeeID = get_id_number(emp_df)
+    countryOfBirth = country
+    gender_dice = random.randint(1,100)
     
-        department = get_random_department(departments)
-        role = get_random_role(roles_and_salaries_df, department)
-        salary = get_random_salary(roles_and_salaries_df, role)
+    if gender_dice <= 49:
+        gender = 'male'
+    elif gender_dice <= 98:
+        gender = 'female'
+    else:
+        gender = 'nonbinary'
+    
+    firstname, lastname = get_unique_name(country, gender, emp_df, locality)    
+    name = firstname + " " + lastname
+    # domain = fake.free_email_domain()
+    email = get_unique_email(firstname, lastname, emp_df, locality)
+    ssn = us_fake.ssn()
+    phone = us_fake.phone_number()
+    birthdate = us_fake.date_between(start_date='-60y', end_date='-20y')
+    at_least_twenty = birthdate + relativedelta(years=20)
+    founding_date = datetime.date(2010, 1, 1)
+    
+    # if the employee was eligible for hire at the time of founding
+    if at_least_twenty < founding_date:
+        hiredate = us_fake.date_between(start_date=founding_date)
+    else:
+        hiredate = us_fake.date_between(start_date=at_least_twenty)
 
-        emp_df.loc[-1] = [employeeID, countryOfBirth, name, phone, email, gender, birthdate, hiredate, department, role, salary, ssn]
-        emp_df.index = emp_df.index + 1 
-        emp_df = emp_df.sort_index()
+    department = get_random_department(departments)
+    role = get_random_role(roles_and_salaries_df, department)
+    salary = get_random_salary(roles_and_salaries_df, role)
+
+    emp_df.loc[-1] = [employeeID, countryOfBirth, name, phone, email, gender, birthdate, hiredate, department, role, salary, ssn]
+    emp_df.index = emp_df.index + 1 
+    emp_df = emp_df.sort_index()
         
 
-emp_df = emp_df.sample(frac=1)
+# emp_df = emp_df.sample(frac=1)
 
 print(emp_df.describe(include='all'))
 print(emp_df.head(10))
 print(sum(emp_df["salary"]))
-emp_df.to_csv("emp_df.csv")
+# emp_df.to_csv("emp_df.csv")
